@@ -2,6 +2,10 @@ name: Build ZEELoad for Apple Silicon
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-macos-gui.yml
 
 permissions:
   contents: read
@@ -11,6 +15,9 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
+
+      - name: Test APK validation
+        run: python3 macos/test_apk_validation.py
 
       - name: Build and package ZEELoad.app
         shell: bash

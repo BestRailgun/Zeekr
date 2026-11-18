@@ -37,10 +37,15 @@ done
 
 [ -n "$APK" ] || { echo "用法：$0 --apk /path/to/app.apk [--pkg 包名|ALL]" >&2; exit 2; }
 [ -f "$APK" ] || { echo "APK 不存在：$APK" >&2; exit 2; }
+[ -r "$APK" ] || { echo "错误：无法读取 APK，请检查文件权限：$APK" >&2; exit 2; }
 APK=$(cd "$(dirname "$APK")" && pwd)/$(basename "$APK")
 
-if ! file -b "$APK" | grep -Eqi 'zip|android package|java archive'; then
-  echo "错误：$APK 不是 zip/APK 文件（是不是把 .command 或其他文件当成 APK 了？）" >&2
+# Check the APK's ZIP entry and CRC instead of matching file(1)'s description.
+# unzip may return 1 for a readable ZIP with non-fatal format warnings.
+/usr/bin/unzip -tq "$APK" AndroidManifest.xml </dev/null >/dev/null 2>&1
+ZIP_STATUS=$?
+if [ "$ZIP_STATUS" -gt 1 ]; then
+  echo "错误：无法读取 APK 内的 AndroidManifest.xml。请选择完整的 APK；若下载的是 ZIP 压缩包，请先解压取出 APK。" >&2
   exit 2
 fi
 
