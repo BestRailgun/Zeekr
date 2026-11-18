@@ -27,6 +27,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+Full Apache 2.0 license: LICENSE-APACHE-2.0.txt
+Full Bouncy Castle license: LICENSE-BOUNCYCASTLE.txt
+
 Other build dependencies:
 - OkHttp 4.12.0 (Apache License 2.0): https://github.com/square/okhttp/blob/parent-4.12.0/LICENSE.txt
 - Bouncy Castle 1.80 (MIT-style license): https://www.bouncycastle.org/licence.html

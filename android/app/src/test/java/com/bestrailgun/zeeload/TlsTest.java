@@ -17,15 +17,18 @@ public class TlsTest {
         Certificates certificates = new Certificates(new FileInputStream("src/main/assets/emudhra-chain.pem"), old);
         byte[] payload = new byte[700000]; new Random(3).nextBytes(payload);
         ExecutorService worker = Executors.newSingleThreadExecutor();
-        try (ServerSocket server = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+        PipedInputStream serverIn = new PipedInputStream(262144), clientIn = new PipedInputStream(262144);
+        Socket serverSocket = memorySocket(serverIn, new PipedOutputStream(clientIn));
+        Socket clientSocket = memorySocket(clientIn, new PipedOutputStream(serverIn));
+        try {
             Future<?> complete = worker.submit(() -> {
-                try (Socket s = server.accept()) {
-                    s.setSoTimeout(10000); ClientHello hello = ClientHello.read(s.getInputStream()); assertEquals("snc-api-gw.zeekrlife.com", hello.host);
+                try (Socket s = serverSocket) {
+                    ClientHello hello = ClientHello.read(s.getInputStream()); assertEquals("snc-api-gw.zeekrlife.com", hello.host);
                     SSLEngine engine = certificates.engine(hello.host); engine.setEnabledProtocols(new String[]{protocol});
                     try (TlsChannel tls = new TlsChannel(s, engine, hello.raw)) {
                         assertEquals(42, tls.input.read()); tls.output.write(payload);
                     }
-                } catch (Exception e) { throw new RuntimeException(e); }
+                } catch (Exception e) { e.printStackTrace(); throw new RuntimeException(e); }
             });
             SSLContext client = SSLContext.getInstance("TLS");
             // Test-only trust manager: production upstream uses OkHttp's normal platform validation.
@@ -34,13 +37,20 @@ public class TlsTest {
                 public void checkClientTrusted(X509Certificate[] c, String a) { }
                 public void checkServerTrusted(X509Certificate[] c, String a) { }
             }}, new SecureRandom());
-            try (SSLSocket socket = (SSLSocket)client.getSocketFactory().createSocket(InetAddress.getLoopbackAddress(), server.getLocalPort())) {
-                socket.setSoTimeout(10000); socket.setEnabledProtocols(new String[]{protocol});
-                SSLParameters p = socket.getSSLParameters(); p.setServerNames(Collections.singletonList(new SNIHostName("snc-api-gw.zeekrlife.com"))); socket.setSSLParameters(p);
-                socket.startHandshake(); socket.getOutputStream().write(42); socket.getOutputStream().flush();
-                assertArrayEquals(payload, ClientHello.exact(socket.getInputStream(), payload.length));
+            SSLEngine clientEngine = client.createSSLEngine("snc-api-gw.zeekrlife.com", 443); clientEngine.setUseClientMode(true); clientEngine.setEnabledProtocols(new String[]{protocol});
+            SSLParameters p = clientEngine.getSSLParameters(); p.setServerNames(Collections.singletonList(new SNIHostName("snc-api-gw.zeekrlife.com"))); clientEngine.setSSLParameters(p);
+            try (TlsChannel socket = new TlsChannel(clientSocket, clientEngine, new byte[0])) {
+                socket.output.write(42);
+                assertArrayEquals(payload, ClientHello.exact(socket.input, payload.length));
             }
             complete.get(15, TimeUnit.SECONDS);
-        } finally { worker.shutdownNow(); }
+        } finally { serverSocket.close(); clientSocket.close(); worker.shutdownNow(); }
+    }
+    private Socket memorySocket(InputStream in, OutputStream out) {
+        return new Socket() {
+            @Override public InputStream getInputStream() { return in; }
+            @Override public OutputStream getOutputStream() { return out; }
+            @Override public void close() throws IOException { in.close(); out.close(); }
+        };
     }
 }

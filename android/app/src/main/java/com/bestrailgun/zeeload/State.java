@@ -15,6 +15,7 @@ final class State {
     private static final ArrayDeque<String> lines = new ArrayDeque<>();
 
     static synchronized void log(String message) {
+        message = message.replaceAll("(https?://[^\\s?#]+)[?#][^\\s]*", "$1?[redacted]");
         String stamp = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
         lines.addLast(stamp + "  " + message);
         while (lines.size() > 180) lines.removeFirst();

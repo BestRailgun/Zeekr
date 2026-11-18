@@ -56,7 +56,7 @@ final class Certificates {
             b.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature));
             b.addExtension(Extension.extendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
             b.addExtension(Extension.subjectAlternativeName, false, new GeneralNames(new GeneralName(GeneralName.dNSName, host)));
-            String algo = caKey.getAlgorithm().equalsIgnoreCase("EC") ? "SHA256withECDSA" : "SHA256withRSA";
+            String algo = caKey instanceof java.security.interfaces.ECPrivateKey ? "SHA256withECDSA" : "SHA256withRSA";
             X509Certificate leaf = new JcaX509CertificateConverter().setProvider(provider).getCertificate(b.build(new JcaContentSignerBuilder(algo).setProvider(provider).build(caKey)));
             leaf.verify(ca.getPublicKey());
             java.security.cert.Certificate[] certs = new java.security.cert.Certificate[chain.size() + 1]; certs[0] = leaf;
