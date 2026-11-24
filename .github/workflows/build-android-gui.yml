@@ -2,14 +2,12 @@ name: Build ZEELoad Android
 
 on:
   workflow_dispatch:
-  push:
-    branches: [codex/android-gui]
-    paths: ['android/**', '.github/workflows/build-android-gui.yml']
   pull_request:
     paths: ['android/**', '.github/workflows/build-android-gui.yml']
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: android-${{ github.ref }}
@@ -52,11 +50,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p android-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk android-output/ZEELoad-Android-0.1.1.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-output/ZEELoad-Android-0.1.1.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-output/ZEELoad-Android-0.1.1.apk > android-output/package-info.txt
+          cp android/app/build/outputs/apk/debug/app-debug.apk android-output/ZEELoad-Android-0.1.2.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-output/ZEELoad-Android-0.1.2.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-output/ZEELoad-Android-0.1.2.apk > android-output/package-info.txt
           head -n 8 android-output/package-info.txt
-          (cd android-output && sha256sum ZEELoad-Android-0.1.1.apk > SHA256SUMS.txt)
+          (cd android-output && sha256sum ZEELoad-Android-0.1.2.apk > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
           name: ZEELoad-Android-APK
@@ -77,6 +75,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ZEELoad-Android-APK
+          path: previous-output
+          run-id: 45424753972
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: ZEELoad-Android-APK
           path: android-output
       - name: Enable emulator acceleration
         run: |
@@ -91,7 +95,8 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            adb install android-output/ZEELoad-Android-0.1.1.apk
+            adb install previous-output/ZEELoad-Android-0.1.1.apk
+            adb install -r android-output/ZEELoad-Android-0.1.2.apk
             adb shell pm grant com.bestrailgun.zeeload android.permission.POST_NOTIFICATIONS
             adb shell am start -W -n com.bestrailgun.zeeload/.MainActivity
             sleep 3
