@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: android-${{ github.ref }}
@@ -38,19 +39,25 @@ jobs:
           key: zeeload-personal-debug-signing-v1
       - name: Install Android platform
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Check real iptables test backends
+        run: |
+          iptables-legacy --version
+          iptables-nft --version
       - name: Test, lint and build self-contained APK
         working-directory: android
+        env:
+          ZEELOAD_TEST_FIREWALL: '1'
         run: gradle --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
       - name: Verify APK signature and package
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p android-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk android-output/ZEELoad-Android-0.1.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-output/ZEELoad-Android-0.1.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-output/ZEELoad-Android-0.1.0.apk > android-output/package-info.txt
+          cp android/app/build/outputs/apk/debug/app-debug.apk android-output/ZEELoad-Android-0.1.1.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-output/ZEELoad-Android-0.1.1.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-output/ZEELoad-Android-0.1.1.apk > android-output/package-info.txt
           head -n 8 android-output/package-info.txt
-          (cd android-output && sha256sum ZEELoad-Android-0.1.0.apk > SHA256SUMS.txt)
+          (cd android-output && sha256sum ZEELoad-Android-0.1.1.apk > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
           name: ZEELoad-Android-APK
@@ -71,6 +78,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ZEELoad-Android-APK
+          path: previous-output
+          run-id: 44309794915
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: ZEELoad-Android-APK
           path: android-output
       - name: Enable emulator acceleration
         run: |
@@ -85,7 +98,8 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            adb install android-output/ZEELoad-Android-0.1.0.apk
+            adb install previous-output/ZEELoad-Android-0.1.0.apk
+            adb install -r android-output/ZEELoad-Android-0.1.1.apk
             adb shell pm grant com.bestrailgun.zeeload android.permission.POST_NOTIFICATIONS
             adb shell am start -W -n com.bestrailgun.zeeload/.MainActivity
             sleep 3

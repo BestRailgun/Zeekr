@@ -55,7 +55,7 @@ final class RootRules {
             RootShell.exec("nohup /system/bin/sh " + q(watchdog) + " >/dev/null 2>&1 </dev/null &");
             RootShell.exec("set -e\n" +
                 "settings put global tether_offload_disabled 1\n" +
-                "iptables -w 5 -t nat -N ZLAD_N\niptables -w 5 -t nat -A ZLAD_N -j REDIRECT --to-ports " + PORT + "\n" +
+                "iptables -w 5 -t nat -N ZLAD_N\n" + redirectCommand() + "\n" +
                 "iptables -w 5 -N ZLAD_I\niptables -w 5 -A ZLAD_I -j ACCEPT\n" +
                 "iptables -w 5 -N ZLAD_F\niptables -w 5 -A ZLAD_F -p udp --dport 443 -j REJECT\niptables -w 5 -A ZLAD_F -j RETURN\n" +
                 "ip6tables -w 5 -N ZLAD6_F\nip6tables -w 5 -A ZLAD6_F -p tcp --dport 443 -j REJECT --reject-with tcp-reset\nip6tables -w 5 -A ZLAD6_F -p udp --dport 443 -j REJECT\nip6tables -w 5 -A ZLAD6_F -j RETURN\n" +
@@ -67,6 +67,10 @@ final class RootRules {
             try { restore(); } catch (Exception e) { failure.addSuppressed(e); }
             throw failure;
         }
+    }
+    static String redirectCommand() {
+        // REDIRECT validates its own protocol; a TCP match in the parent chain is insufficient.
+        return "iptables -w 5 -t nat -A ZLAD_N -p tcp -j REDIRECT --to-ports " + PORT;
     }
     private static String remove(String binary, String parent, String rule, String chain) {
         return "while " + binary + " -C " + parent + " " + rule + " 2>/dev/null; do " + binary + " -D " + parent + " " + rule + "; done\n" +
