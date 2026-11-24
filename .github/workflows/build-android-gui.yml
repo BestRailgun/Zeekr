@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
   group: android-${{ github.ref }}
@@ -78,12 +77,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ZEELoad-Android-APK
-          path: previous-output
-          run-id: 44309794915
-          github-token: ${{ github.token }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: ZEELoad-Android-APK
           path: android-output
       - name: Enable emulator acceleration
         run: |
@@ -98,8 +91,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            adb install previous-output/ZEELoad-Android-0.1.0.apk
-            adb install -r android-output/ZEELoad-Android-0.1.1.apk
+            adb install android-output/ZEELoad-Android-0.1.1.apk
             adb shell pm grant com.bestrailgun.zeeload android.permission.POST_NOTIFICATIONS
             adb shell am start -W -n com.bestrailgun.zeeload/.MainActivity
             sleep 3
