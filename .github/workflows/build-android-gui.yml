@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
   group: android-${{ github.ref }}
@@ -17,6 +16,8 @@ jobs:
   apk:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      ZEELOAD_KEYSTORE_FILE: ${{ github.workspace }}/android/.signing/zeeload-debug.keystore
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -32,8 +33,20 @@ jobs:
           gradle-version: '8.11.1'
       - uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: zeeload-personal-debug-signing-v1
+          path: android/.signing/zeeload-debug.keystore
+          key: zeeload-personal-debug-signing-v2
+      - name: Prepare cached signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f "$ZEELOAD_KEYSTORE_FILE" ]; then
+            mkdir -p "$(dirname "$ZEELOAD_KEYSTORE_FILE")"
+            keytool -genkeypair -storetype PKCS12 -keystore "$ZEELOAD_KEYSTORE_FILE" \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname 'CN=Android Debug,O=Android,C=US'
+          fi
+          test -s "$ZEELOAD_KEYSTORE_FILE"
       - name: Install Android platform
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Check real iptables test backends
@@ -75,12 +88,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ZEELoad-Android-APK
-          path: previous-output
-          run-id: 45424753972
-          github-token: ${{ github.token }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: ZEELoad-Android-APK
           path: android-output
       - name: Enable emulator acceleration
         run: |
@@ -95,8 +102,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            adb install previous-output/ZEELoad-Android-0.1.1.apk
-            adb install -r android-output/ZEELoad-Android-0.1.2.apk
+            adb install android-output/ZEELoad-Android-0.1.2.apk
             adb shell pm grant com.bestrailgun.zeeload android.permission.POST_NOTIFICATIONS
             adb shell am start -W -n com.bestrailgun.zeeload/.MainActivity
             sleep 3

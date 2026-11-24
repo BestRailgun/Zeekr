@@ -17,6 +17,10 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
     buildTypes { release { minifyEnabled false } }
+    def signingFile = System.getenv('ZEELOAD_KEYSTORE_FILE')
+    if (signingFile) {
+        signingConfigs.debug.storeFile = file(signingFile)
+    }
     packaging { resources { excludes += ['META-INF/versions/**', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/LICENSE*', 'META-INF/NOTICE*', 'META-INF/INDEX.LIST', 'META-INF/DEPENDENCIES'] } }
     lint { abortOnError true; disable 'ObsoleteSdkInt' }
 }
